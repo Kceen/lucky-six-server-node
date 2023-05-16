@@ -4,7 +4,7 @@ export interface ITicket {
   id: string
   playerId: string
   betPerRound: number
-  playingBalls: Record<number, number[]>
+  playingBalls: Map<number, number[]>
   userBalls: number[]
   startingRound: number
   numOfRounds: number
@@ -36,6 +36,7 @@ export enum GameActions {
   UPDATE_GAME_STATE = 'UPDATE_GAME_STATE',
   PLAYER_WIN = 'PLAYER_WIN',
   BET = 'BET',
+  BET_SUCCESS_RESPONSE = 'BET_SUCCESS_RESPONSE',
 }
 
 export enum GameStatus {

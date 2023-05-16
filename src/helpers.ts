@@ -1,4 +1,5 @@
 import { IMessage } from './models'
+import QRCode from 'qrcode'
 
 export const stakes: Record<number, number> = {
   1: 0,
@@ -64,4 +65,8 @@ export function convertMessageSend(data: IMessage): string {
 
 export function convertMessageRecieve(data: any): IMessage {
   return JSON.parse(data.toString())
+}
+
+export async function generateQR(text: string) {
+  return await QRCode.toDataURL(text)
 }

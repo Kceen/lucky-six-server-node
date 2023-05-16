@@ -2,6 +2,7 @@ import { WebSocketServer, WebSocket } from 'ws'
 import {
   convertMessageRecieve,
   convertMessageSend,
+  generateQR,
   shuffle,
   stakes,
 } from './helpers'
@@ -14,39 +15,31 @@ import {
   ITicket,
 } from './models'
 import crypto from 'crypto'
-import fs from 'fs'
-import mysql from 'mysql2'
+import { startTicketCheckingServer } from './ticketCheckingServer'
 
 const wss = new WebSocketServer({ port: 8080 })
 
 const tickets: ITicket[] = []
 const allBalls: number[] = []
-let playingBalls: number[] = []
+let activeBalls: number[] = []
 const players: IPlayer[] = []
-const gameState: IGameState = {
+export const gameState: IGameState = {
   round: 1,
   activePlayers: wss.clients.size,
   status: GameStatus.WAITING_FOR_NEXT_ROUND,
 }
+const roundTimeMS = 5000
+const ballDrawingTimeMS = 100
 
+// INITIALIZE ALL BALLS WITH NUMBER VALUES AND START TICKET CHECKING SERVER
 for (let i = 0; i < 48; i++) {
   allBalls[i] = i + 1
 }
-
-const conn = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'admin',
-})
-
-conn.connect(function (err) {
-  if (err) throw err
-  console.log('Connected!')
-})
+startTicketCheckingServer()
 
 let intervalId: any = undefined
 executeRound()
-setInterval(executeRound, 5000)
+setInterval(executeRound, roundTimeMS)
 
 wss.on('connection', (ws) => {
   ws.on('message', (data) => {
@@ -63,13 +56,25 @@ wss.on('connection', (ws) => {
     }
 
     if (message.type === GameActions.BET) {
-      tickets.push({
+      const newTicket = {
         ...message.data,
         date: new Date(),
         id: crypto.randomUUID(),
         startingRound: gameState.round + 1,
-        playingBalls: {},
-      })
+        playingBalls: new Map(),
+      }
+      tickets.push(newTicket)
+      generateQR('localhost:3001/ticketStatus/id=' + newTicket.id).then(
+        (qrCode) => {
+          console.log('localhost:3001/ticketStatus/id=' + newTicket.id)
+          ws.send(
+            convertMessageSend({
+              type: GameActions.BET_SUCCESS_RESPONSE,
+              data: qrCode,
+            })
+          )
+        }
+      )
     }
   })
 
@@ -82,9 +87,9 @@ wss.on('connection', (ws) => {
 })
 
 function executeRound() {
-  gameState.status = GameStatus.ROUND_IN_PROGRESS
-
   console.log('round ' + gameState.round + ' started')
+
+  gameState.status = GameStatus.ROUND_IN_PROGRESS
 
   broadcast({
     type: GameActions.ROUND_START,
@@ -99,16 +104,17 @@ function executeRound() {
   }
 
   shuffle(allBalls)
-  playingBalls = allBalls.slice(0, 35)
+  activeBalls = allBalls.slice(0, 35)
   let ballIndex = 0
 
   intervalId = setInterval(() => {
     if (ballIndex === 35) {
       endRound()
+      return
     }
-    broadcast({ type: GameActions.NEW_BALL, data: playingBalls[ballIndex] })
+    broadcast({ type: GameActions.NEW_BALL, data: activeBalls[ballIndex] })
     ballIndex++
-  }, 100)
+  }, ballDrawingTimeMS)
 }
 
 function endRound() {
@@ -118,55 +124,36 @@ function endRound() {
   gameState.round++
 
   for (const ticket of tickets) {
-    ticket.playingBalls[gameState.round] = playingBalls
-
-    // console.log(
-    //   `${ticket.id},${ticket.playerId},${
-    //     ticket.betPerRound
-    //   },${ticket.playingBalls.toString()},${ticket.userBalls},${
-    //     ticket.startingRound
-    //   },${ticket.numOfRounds},${ticket.date}`
-    // )
-
-    if (ticket.startingRound + ticket.numOfRounds === gameState.round + 1) {
-      fs.appendFile('db.txt', JSON.stringify(ticket), function (err) {})
-
-      // INSERT INTO MYSQL DB
-      let playingNumbersString = ''
-      Object.keys(ticket.playingBalls).forEach((key) => {
-        playingNumbersString += '[' + ticket.playingBalls[Number(key)] + '],'
-      })
-      playingNumbersString = playingNumbersString.slice(
-        0,
-        playingNumbersString.length - 1
-      )
-
-      conn.query(
-        `INSERT INTO ticket VALUES (?,${ticket.playerId},${ticket.betPerRound},${playingNumbersString},${ticket.userBalls},${ticket.startingRound},${ticket.numOfRounds},${ticket.date});`,
-        function (err, results) {
-          console.log(results)
-        }
-      )
-
-      tickets.filter((t) => t.id !== ticket.id)
-    }
+    ticket.playingBalls.set(gameState.round, activeBalls)
 
     let hitCount = 0
-    for (let i = 0; i < playingBalls.length; i++) {
-      if (ticket.userBalls.includes(playingBalls[i])) {
+    for (let i = 0; i < activeBalls.length; i++) {
+      if (ticket.userBalls.includes(activeBalls[i])) {
         hitCount++
         if (hitCount === 6) {
-          players
-            .find((player) => ticket.playerId === player.id)!
-            .ws.send(
+          let winningPlayer = players.find(
+            (player) => ticket.playerId === player.id
+          )
+
+          if (winningPlayer) {
+            winningPlayer.ws.send(
               convertMessageSend({
                 type: GameActions.PLAYER_WIN,
                 data: ticket.betPerRound * stakes[i + 1],
               })
             )
+          }
           break
         }
       }
+    }
+
+    const isTicketExpired =
+      ticket.startingRound + ticket.numOfRounds === gameState.round + 1
+    if (isTicketExpired) {
+      tickets.filter((t) => t.id !== ticket.id)
+
+      // TODO - TICKET NO LONGER ACTIVE, WRITE IT TO DB
     }
   }
 
@@ -176,7 +163,6 @@ function endRound() {
     data: gameState,
   })
   clearInterval(intervalId)
-  return
 }
 
 function broadcast(data: IMessage) {
