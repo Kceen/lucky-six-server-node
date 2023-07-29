@@ -30,8 +30,8 @@ export const gameState: IGameState = {
   activePlayers: wss.clients.size,
   status: GameStatus.WAITING_FOR_NEXT_ROUND
 }
-const roundTimeMS = 5000
-const ballDrawingTimeMS = 100
+const roundTimeMS = 60000
+const ballDrawingTimeMS = 1000
 
 // INITIALIZE ALL BALLS WITH NUMBER VALUES AND START TICKET CHECKING SERVER
 for (let i = 0; i < 48; i++) {
@@ -72,7 +72,6 @@ wss.on('connection', (ws) => {
       activeTickets.push(newTicket)
       generateQR('localhost:3001/ticketStatus/id=' + newTicket.id).then(
         (qrCode) => {
-          console.log('localhost:3001/ticketStatus/id=' + newTicket.id)
           ws.send(
             convertMessageSend({
               type: GameActions.BET_SUCCESS_RESPONSE,
@@ -124,21 +123,17 @@ function executeRound() {
 }
 
 async function endRound() {
-  console.log('round ' + gameState.round + ' ended')
-
   gameState.status = GameStatus.WAITING_FOR_NEXT_ROUND
-  gameState.round++
 
   let activeTicketsTemp = await getAllActiveTickets()
 
   for (const ticket of activeTicketsTemp) {
     const isTicketExpired =
-      ticket.startingRound + ticket.numOfRounds === gameState.round
+      ticket.startingRound + ticket.numOfRounds === gameState.round + 1
 
-    if (isTicketExpired) {
-      await updateTicket(ticket.id, {
-        active: false
-      })
+    const isTicketNotYetInPlay = ticket.startingRound > gameState.round
+
+    if (isTicketNotYetInPlay) {
       continue
     }
 
@@ -163,7 +158,17 @@ async function endRound() {
     await updateTicket(ticket.id, {
       rounds: [...ticket.rounds, round]
     })
+
+    if (isTicketExpired) {
+      await updateTicket(ticket.id, {
+        active: false
+      })
+      continue
+    }
   }
+
+  console.log('round ' + gameState.round + ' ended')
+  gameState.round++
 
   broadcast({ type: GameActions.ROUND_END })
   broadcast({

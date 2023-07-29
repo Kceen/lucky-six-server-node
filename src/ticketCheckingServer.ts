@@ -11,8 +11,13 @@ export function startTicketCheckingServer() {
   ticketCheckingServer.get(
     '/ticket-status/:ticketId',
     async function (req, res) {
-      const ticket = await getTicketById(req.params.ticketId)
-      res.send(JSON.stringify(ticket))
+      const ticketResponse = await getTicketById(req.params.ticketId)
+      if (ticketResponse.totalItems === 0) {
+        res.sendStatus(404)
+      } else {
+        const ticket = ticketResponse.items[0]
+        res.send(JSON.stringify(ticket))
+      }
     }
   )
 
