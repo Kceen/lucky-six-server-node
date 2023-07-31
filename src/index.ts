@@ -25,13 +25,16 @@ const activeTickets: ITicket[] = []
 const allBalls: number[] = []
 let activeBalls: number[] = []
 const players: IPlayer[] = []
+let currentBallIndex = 0
+
 export const gameState: IGameState = {
-  round: 1,
+  round: 0,
   activePlayers: wss.clients.size,
   status: GameStatus.WAITING_FOR_NEXT_ROUND
 }
-const roundTimeMS = 60000
 const ballDrawingTimeMS = 1000
+const roundTimeMS = ballDrawingTimeMS * 35
+const pauseTimeMS = 10000
 
 // INITIALIZE ALL BALLS WITH NUMBER VALUES AND START TICKET CHECKING SERVER
 for (let i = 0; i < 48; i++) {
@@ -41,7 +44,7 @@ startTicketCheckingServer()
 
 let intervalId: any = undefined
 executeRound()
-setInterval(executeRound, roundTimeMS)
+setInterval(executeRound, roundTimeMS + pauseTimeMS)
 
 wss.on('connection', (ws) => {
   ws.on('message', (data) => {
@@ -54,6 +57,11 @@ wss.on('connection', (ws) => {
       broadcast({
         type: GameActions.UPDATE_GAME_STATE,
         data: gameState
+      })
+
+      broadcast({
+        type: GameActions.UPDATE_BALLS,
+        data: activeBalls.slice(0, currentBallIndex)
       })
     }
 
@@ -92,6 +100,7 @@ wss.on('connection', (ws) => {
 })
 
 function executeRound() {
+  gameState.round++
   console.log('round ' + gameState.round + ' started')
 
   gameState.status = GameStatus.ROUND_IN_PROGRESS
@@ -110,15 +119,18 @@ function executeRound() {
 
   shuffle(allBalls)
   activeBalls = allBalls.slice(0, 35)
-  let ballIndex = 0
+  currentBallIndex = 0
 
   intervalId = setInterval(() => {
-    if (ballIndex === 35) {
+    if (currentBallIndex === 35) {
       endRound()
       return
     }
-    broadcast({ type: GameActions.NEW_BALL, data: activeBalls[ballIndex] })
-    ballIndex++
+    broadcast({
+      type: GameActions.NEW_BALL,
+      data: activeBalls[currentBallIndex]
+    })
+    currentBallIndex++
   }, ballDrawingTimeMS)
 }
 
@@ -168,13 +180,25 @@ async function endRound() {
   }
 
   console.log('round ' + gameState.round + ' ended')
-  gameState.round++
 
   broadcast({ type: GameActions.ROUND_END })
   broadcast({
     type: GameActions.UPDATE_GAME_STATE,
     data: gameState
   })
+
+  let timeRemaining = pauseTimeMS / 1000 - 1
+  const timeRemainingIntervalId = setInterval(() => {
+    broadcast({
+      type: GameActions.TIME_REMAINING,
+      data: timeRemaining
+    })
+    timeRemaining--
+    if (timeRemaining < 0) {
+      clearInterval(timeRemainingIntervalId)
+    }
+  }, 1000)
+
   clearInterval(intervalId)
 }
 
