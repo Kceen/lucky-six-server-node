@@ -126,10 +126,18 @@ function executeRound() {
       endRound()
       return
     }
-    broadcast({
-      type: GameActions.NEW_BALL,
-      data: activeBalls[currentBallIndex]
-    })
+    if (currentBallIndex < 5) {
+      broadcast({
+        type: GameActions.NEW_DRUM_BALL,
+        data: activeBalls[currentBallIndex]
+      })
+    } else {
+      broadcast({
+        type: GameActions.NEW_BALL,
+        data: activeBalls[currentBallIndex]
+      })
+    }
+
     currentBallIndex++
   }, ballDrawingTimeMS)
 }

@@ -39,6 +39,7 @@ export interface IGameState {
 export enum GameActions {
   PLAYER_JOINED = 'PLAYER_JOINED',
   NEW_BALL = 'NEW_BALL',
+  NEW_DRUM_BALL = 'NEW_DRUM_BALL',
   ROUND_START = 'ROUND_START',
   ROUND_END = 'ROUND_END',
   UPDATE_GAME_STATE = 'UPDATE_GAME_STATE',
