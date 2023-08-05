@@ -34,20 +34,16 @@ export interface IGameState {
   round: number
   activePlayers: number
   status: GameStatus
+  activeBalls: number[]
+  timeRemaining: number
 }
 
 export enum GameActions {
   PLAYER_JOINED = 'PLAYER_JOINED',
-  NEW_BALL = 'NEW_BALL',
-  NEW_DRUM_BALL = 'NEW_DRUM_BALL',
-  ROUND_START = 'ROUND_START',
-  ROUND_END = 'ROUND_END',
   UPDATE_GAME_STATE = 'UPDATE_GAME_STATE',
   PLAYER_WIN = 'PLAYER_WIN',
   BET = 'BET',
-  BET_SUCCESS_RESPONSE = 'BET_SUCCESS_RESPONSE',
-  UPDATE_BALLS = 'UPDATE_BALLS',
-  TIME_REMAINING = 'TIME_REMAINING'
+  BET_SUCCESS_RESPONSE = 'BET_SUCCESS_RESPONSE'
 }
 
 export enum GameStatus {

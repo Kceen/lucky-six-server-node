@@ -21,7 +21,6 @@ import { addTicketToDB, getAllActiveTickets, updateTicket } from './db'
 
 const wss = new WebSocketServer({ port: 8080 })
 
-const activeTickets: ITicket[] = []
 const allBalls: number[] = []
 let activeBalls: number[] = []
 const players: IPlayer[] = []
@@ -30,7 +29,9 @@ let currentBallIndex = 0
 export const gameState: IGameState = {
   round: 0,
   activePlayers: wss.clients.size,
-  status: GameStatus.WAITING_FOR_NEXT_ROUND
+  status: GameStatus.WAITING_FOR_NEXT_ROUND,
+  activeBalls: [],
+  timeRemaining: 0
 }
 const ballDrawingTimeMS = 1000
 const roundTimeMS = ballDrawingTimeMS * 35
@@ -58,11 +59,6 @@ wss.on('connection', (ws) => {
         type: GameActions.UPDATE_GAME_STATE,
         data: gameState
       })
-
-      broadcast({
-        type: GameActions.UPDATE_BALLS,
-        data: activeBalls.slice(0, currentBallIndex)
-      })
     }
 
     if (message.type === GameActions.BET) {
@@ -77,7 +73,6 @@ wss.on('connection', (ws) => {
 
       addTicketToDB(newTicket)
 
-      activeTickets.push(newTicket)
       generateQR('localhost:3001/ticketStatus/id=' + newTicket.id).then(
         (qrCode) => {
           ws.send(
@@ -104,10 +99,8 @@ function executeRound() {
   console.log('round ' + gameState.round + ' started')
 
   gameState.status = GameStatus.ROUND_IN_PROGRESS
+  gameState.activeBalls = []
 
-  broadcast({
-    type: GameActions.ROUND_START
-  })
   broadcast({
     type: GameActions.UPDATE_GAME_STATE,
     data: gameState
@@ -126,17 +119,13 @@ function executeRound() {
       endRound()
       return
     }
-    if (currentBallIndex < 5) {
-      broadcast({
-        type: GameActions.NEW_DRUM_BALL,
-        data: activeBalls[currentBallIndex]
-      })
-    } else {
-      broadcast({
-        type: GameActions.NEW_BALL,
-        data: activeBalls[currentBallIndex]
-      })
-    }
+
+    gameState.activeBalls.push(activeBalls[currentBallIndex])
+
+    broadcast({
+      type: GameActions.UPDATE_GAME_STATE,
+      data: gameState
+    })
 
     currentBallIndex++
   }, ballDrawingTimeMS)
@@ -145,9 +134,14 @@ function executeRound() {
 async function endRound() {
   gameState.status = GameStatus.WAITING_FOR_NEXT_ROUND
 
-  let activeTicketsTemp = await getAllActiveTickets()
+  broadcast({
+    type: GameActions.UPDATE_GAME_STATE,
+    data: gameState
+  })
 
-  for (const ticket of activeTicketsTemp) {
+  let activeTickets = await getAllActiveTickets()
+
+  for (const ticket of activeTickets) {
     const isTicketExpired =
       ticket.startingRound + ticket.numOfRounds === gameState.round + 1
 
@@ -189,17 +183,12 @@ async function endRound() {
 
   console.log('round ' + gameState.round + ' ended')
 
-  broadcast({ type: GameActions.ROUND_END })
-  broadcast({
-    type: GameActions.UPDATE_GAME_STATE,
-    data: gameState
-  })
-
   let timeRemaining = pauseTimeMS / 1000 - 1
   const timeRemainingIntervalId = setInterval(() => {
+    gameState.timeRemaining = timeRemaining
     broadcast({
-      type: GameActions.TIME_REMAINING,
-      data: timeRemaining
+      type: GameActions.UPDATE_GAME_STATE,
+      data: gameState
     })
     timeRemaining--
     if (timeRemaining < 0) {
