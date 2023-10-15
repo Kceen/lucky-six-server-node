@@ -127,6 +127,11 @@ function executeRound() {
       data: gameState
     })
 
+    broadcast({
+      type: GameActions.NEW_BALL,
+      data: gameState.activeBalls[gameState.activeBalls.length - 1]
+    })
+
     currentBallIndex++
   }, ballDrawingTimeMS)
 }
