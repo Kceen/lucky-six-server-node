@@ -3,6 +3,7 @@ import {
   convertMessageRecieve,
   convertMessageSend,
   generateQR,
+  getColorOfBall,
   shuffle,
   stakes
 } from './helpers'
@@ -31,7 +32,10 @@ export const gameState: IGameState = {
   activePlayers: wss.clients.size,
   status: GameStatus.WAITING_FOR_NEXT_ROUND,
   activeBalls: [],
-  timeRemaining: 0
+  timeRemaining: 0,
+  firstBallColor: '',
+  firstBallEven: false,
+  firstBallHigherThan24: false
 }
 const ballDrawingTimeMS = 1000
 const roundTimeMS = ballDrawingTimeMS * 35
@@ -118,6 +122,13 @@ function executeRound() {
     if (currentBallIndex === 35) {
       endRound()
       return
+    }
+
+    if (currentBallIndex === 0) {
+      gameState.firstBallHigherThan24 =
+        activeBalls[currentBallIndex] > 24 ? true : false
+      gameState.firstBallEven = activeBalls[currentBallIndex] % 2 === 0
+      gameState.firstBallColor = getColorOfBall(activeBalls[currentBallIndex])
     }
 
     gameState.activeBalls.push(activeBalls[currentBallIndex])

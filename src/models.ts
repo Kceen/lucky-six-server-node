@@ -36,6 +36,9 @@ export interface IGameState {
   status: GameStatus
   activeBalls: number[]
   timeRemaining: number
+  firstBallHigherThan24: boolean
+  firstBallColor: string
+  firstBallEven: boolean
 }
 
 export enum GameActions {
