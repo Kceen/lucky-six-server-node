@@ -20,7 +20,8 @@ export const addTicketToDB = async (ticket: ITicket) => {
     startingRound: ticket.startingRound,
     numOfRounds: ticket.numOfRounds,
     timestamp: new Date(),
-    active: ticket.active
+    active: ticket.active,
+    betSum: ticket.betSum
   })
 }
 

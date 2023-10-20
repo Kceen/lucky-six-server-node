@@ -27,19 +27,21 @@ let activeBalls: number[] = []
 const players: IPlayer[] = []
 let currentBallIndex = 0
 
+const ballDrawingTimeMS = 1000
+const roundTimeMS = ballDrawingTimeMS * 35
+const pauseTimeMS = 20000
+
 export const gameState: IGameState = {
   round: 0,
   activePlayers: wss.clients.size,
   status: GameStatus.WAITING_FOR_NEXT_ROUND,
   activeBalls: [],
+  pauseTime: pauseTimeMS / 1000,
   timeRemaining: 0,
   firstBallColor: '',
   firstBallEven: false,
   firstBallHigherThan24: false
 }
-const ballDrawingTimeMS = 1000
-const roundTimeMS = ballDrawingTimeMS * 35
-const pauseTimeMS = 10000
 
 // INITIALIZE ALL BALLS WITH NUMBER VALUES AND START TICKET CHECKING SERVER
 for (let i = 0; i < 48; i++) {
@@ -66,18 +68,21 @@ wss.on('connection', (ws) => {
     }
 
     if (message.type === GameActions.BET) {
+      const test = message.data.betPerRound * message.data.numOfRounds
+
       const newTicket: ITicket = {
         ...message.data,
         timestamp: new Date(),
         id: crypto.randomUUID(),
         startingRound: gameState.round + 1,
         rounds: [],
-        active: true
+        active: true,
+        betSum: message.data.betPerRound * message.data.numOfRounds
       }
 
       addTicketToDB(newTicket)
 
-      generateQR('localhost:3001/ticketStatus/id=' + newTicket.id).then(
+      generateQR('localhost:3000/ticket-status?id=' + newTicket.id).then(
         (qrCode) => {
           ws.send(
             convertMessageSend({
@@ -185,8 +190,12 @@ async function endRound() {
         }
       }
     }
+    const newRounds = [...ticket.rounds, round]
     await updateTicket(ticket.id, {
-      rounds: [...ticket.rounds, round]
+      rounds: newRounds,
+      amountWon: newRounds.reduce((sum: number, round: ITicketRound) => {
+        return sum + round.amountWon
+      }, 0)
     })
 
     if (isTicketExpired) {

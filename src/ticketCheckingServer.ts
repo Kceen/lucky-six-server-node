@@ -16,6 +16,13 @@ export function startTicketCheckingServer() {
         res.sendStatus(404)
       } else {
         const ticket = ticketResponse.items[0]
+
+        ticket.timestamp = new Date(ticket.timestamp)
+        ticket.userBalls = ticket.userBalls.split(',')
+        ticket.userBalls = ticket.userBalls.map((ballString: any) => {
+          return parseInt(ballString)
+        })
+
         res.send(JSON.stringify(ticket))
       }
     }
