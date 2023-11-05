@@ -96,6 +96,17 @@ export function convertMessageRecieve(data: any): IMessage {
   return JSON.parse(data.toString())
 }
 
+export const convertBallsStringToNumberArray = (balls: string) => {
+  const ballsStringArray = balls.split(',')
+  const ballsNumberArray = []
+
+  for (let i = 0; i < ballsStringArray.length; i++) {
+    ballsNumberArray.push(Number(ballsStringArray[i]))
+  }
+
+  return ballsNumberArray
+}
+
 export async function generateQR(text: string) {
   return await QRCode.toDataURL(text)
 }

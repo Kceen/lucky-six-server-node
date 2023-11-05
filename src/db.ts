@@ -1,3 +1,4 @@
+import { convertBallsStringToNumberArray } from './helpers'
 import { ITicket } from './models'
 
 const PocketBase = require('pocketbase/cjs')
@@ -5,9 +6,15 @@ const PocketBase = require('pocketbase/cjs')
 const pb = new PocketBase('http://127.0.0.1:8090')
 
 export const getAllActiveTickets = async () => {
-  return await pb.collection('tickets').getFullList({
+  const activeTickets = await pb.collection('tickets').getFullList({
     filter: 'active = true'
   })
+
+  for (const ticket of activeTickets) {
+    ticket.userBalls = convertBallsStringToNumberArray(ticket.userBalls)
+  }
+
+  return activeTickets
 }
 
 export const addTicketToDB = async (ticket: ITicket) => {

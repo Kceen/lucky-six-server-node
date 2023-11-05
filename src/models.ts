@@ -38,7 +38,6 @@ export interface IGameState {
   status: GameStatus
   activeBalls: number[]
   pauseTime: number
-  timeRemaining: number
   firstBallHigherThan24: boolean
   firstBallColor: string
   firstBallEven: boolean
@@ -50,7 +49,8 @@ export enum GameActions {
   PLAYER_WIN = 'PLAYER_WIN',
   BET = 'BET',
   BET_SUCCESS_RESPONSE = 'BET_SUCCESS_RESPONSE',
-  NEW_BALL = 'NEW_BALL'
+  NEW_BALL = 'NEW_BALL',
+  TIME_REMAINING = 'TIME_REMAINING'
 }
 
 export enum GameStatus {

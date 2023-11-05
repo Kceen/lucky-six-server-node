@@ -27,9 +27,11 @@ let activeBalls: number[] = []
 const players: IPlayer[] = []
 let currentBallIndex = 0
 
-const ballDrawingTimeMS = 1000
+const ballDrawingTimeMS = 250
 const roundTimeMS = ballDrawingTimeMS * 35
-const pauseTimeMS = 20000
+const pauseTimeMS = 10000
+
+let timeRemaining = 0
 
 export const gameState: IGameState = {
   round: 0,
@@ -37,7 +39,6 @@ export const gameState: IGameState = {
   status: GameStatus.WAITING_FOR_NEXT_ROUND,
   activeBalls: [],
   pauseTime: pauseTimeMS / 1000,
-  timeRemaining: 0,
   firstBallColor: '',
   firstBallEven: false,
   firstBallHigherThan24: false
@@ -208,15 +209,15 @@ async function endRound() {
 
   console.log('round ' + gameState.round + ' ended')
 
-  let timeRemaining = pauseTimeMS / 1000 - 1
+  let timeRemainingCurrent = pauseTimeMS / 1000 - 1
   const timeRemainingIntervalId = setInterval(() => {
-    gameState.timeRemaining = timeRemaining
+    timeRemaining = timeRemainingCurrent
     broadcast({
-      type: GameActions.UPDATE_GAME_STATE,
-      data: gameState
+      type: GameActions.TIME_REMAINING,
+      data: timeRemaining
     })
-    timeRemaining--
-    if (timeRemaining < 0) {
+    timeRemainingCurrent--
+    if (timeRemainingCurrent < 0) {
       clearInterval(timeRemainingIntervalId)
     }
   }, 1000)
