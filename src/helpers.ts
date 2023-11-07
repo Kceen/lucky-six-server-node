@@ -1,4 +1,4 @@
-import { IMessage } from './models'
+import { IMessage, ITicketDTO, IUserDTO } from './models'
 import QRCode from 'qrcode'
 
 export const stakes: Record<number, number> = {
@@ -79,10 +79,7 @@ export function shuffle(array: number[]) {
     currentIndex--
 
     // And swap it with the current element.
-    ;[array[currentIndex], array[randomIndex]] = [
-      array[randomIndex],
-      array[currentIndex]
-    ]
+    ;[array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]]
   }
 
   return array
@@ -105,6 +102,41 @@ export const convertBallsStringToNumberArray = (balls: string) => {
   }
 
   return ballsNumberArray
+}
+
+export const convertDBResponseTicketToTicketDTO = (ticketDB: any) => {
+  const ticket: ITicketDTO = {
+    id: ticketDB.id,
+    ticketId: ticketDB.ticketId,
+    betPerRound: ticketDB.betPerRound,
+    betSum: ticketDB.betSum,
+    rounds: ticketDB.rounds,
+    userBalls: convertBallsStringToNumberArray(ticketDB.userBalls),
+    startingRound: ticketDB.startingRound,
+    numOfRounds: ticketDB.numOfRounds,
+    timestamp: new Date(ticketDB.timestamp),
+    active: ticketDB.active,
+    amountWon: ticketDB.amountWon,
+    user: {
+      id: ticketDB.expand.user.id,
+      username: ticketDB.expand.user.username
+    }
+  }
+
+  return ticket
+}
+
+export const convertDBResponseUserToUserDTO = (userDB: any) => {
+  const user: IUserDTO = {
+    id: userDB.id,
+    username: userDB.username,
+    money: userDB.money,
+    tickets: userDB.expand['tickets(user)'].map((ticketDB: any) =>
+      convertDBResponseTicketToTicketDTO(ticketDB)
+    )
+  }
+
+  return user
 }
 
 export async function generateQR(text: string) {

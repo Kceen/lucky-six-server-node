@@ -1,5 +1,9 @@
-import { convertBallsStringToNumberArray } from './helpers'
-import { ITicket } from './models'
+import {
+  convertBallsStringToNumberArray,
+  convertDBResponseTicketToTicketDTO,
+  convertDBResponseUserToUserDTO
+} from './helpers'
+import { ITicket, ITicketDTO } from './models'
 
 const PocketBase = require('pocketbase/cjs')
 
@@ -32,17 +36,41 @@ export const addTicketToDB = async (ticket: ITicket) => {
   })
 }
 
-export const updateTicket = async (
-  recordId: string,
-  updatedFieldsObject: any
-) => {
+export const updateTicket = async (recordId: string, updatedFieldsObject: any) => {
   return await pb.collection('tickets').update(recordId, {
     ...updatedFieldsObject
   })
 }
 
 export const getTicketById = async (ticketId: string) => {
-  return await pb.collection('tickets').getList(1, 1, {
-    filter: `ticketId="${ticketId}"`
+  const ticketResponse = await pb.collection('tickets').getList(1, 1, {
+    filter: `ticketId="${ticketId}"`,
+    expand: 'user'
   })
+
+  if (ticketResponse.totalItems === 0) {
+    return undefined
+  }
+
+  const ticket = convertDBResponseTicketToTicketDTO(ticketResponse.items[0])
+
+  return ticket
+}
+
+export const login = async (username: string, password: string) => {
+  try {
+    // GET THE USER WITH ALL HIS TICKETS AND USER INFO IN THOSE TICKETS (tickets(user).user)
+    const userResponse = await pb
+      .collection('users')
+      .getFirstListItem(`username="${username}" && password="${password}"`, {
+        expand: 'tickets(user).user'
+      })
+
+    const user = convertDBResponseUserToUserDTO(userResponse)
+
+    return user
+  } catch (error) {
+    console.log(error)
+    return undefined
+  }
 }

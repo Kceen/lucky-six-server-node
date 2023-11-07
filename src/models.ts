@@ -14,6 +14,21 @@ export interface ITicket {
   amountWon: number
 }
 
+export interface ITicketDTO {
+  id: string
+  ticketId: string
+  betPerRound: number
+  betSum: number
+  rounds: ITicketRound[]
+  userBalls: number[]
+  startingRound: number
+  numOfRounds: number
+  timestamp: Date
+  active: boolean
+  amountWon: number
+  user: ITicketUserDTO
+}
+
 export interface ITicketRound {
   number: number
   balls: number[]
@@ -21,10 +36,20 @@ export interface ITicketRound {
   amountWon: number
 }
 
-export interface IPlayer {
-  id: string
-  name: string
+export interface IPlayer extends IUserDTO {
   ws: WebSocket
+}
+
+export interface IUserDTO {
+  id: string
+  username: string
+  money: number
+  tickets: ITicketDTO[]
+}
+
+export interface ITicketUserDTO {
+  id: string
+  username: string
 }
 
 export interface IMessage {
@@ -50,7 +75,10 @@ export enum GameActions {
   BET = 'BET',
   BET_SUCCESS_RESPONSE = 'BET_SUCCESS_RESPONSE',
   NEW_BALL = 'NEW_BALL',
-  TIME_REMAINING = 'TIME_REMAINING'
+  TIME_REMAINING = 'TIME_REMAINING',
+  LOGIN = 'LOGIN',
+  LOGIN_SUCCESS = 'LOGIN_SUCCESS',
+  LOGIN_FAIL = 'LOGIN_FAIL'
 }
 
 export enum GameStatus {

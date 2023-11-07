@@ -18,7 +18,7 @@ import {
 } from './models'
 import crypto from 'crypto'
 import { startTicketCheckingServer } from './ticketCheckingServer'
-import { addTicketToDB, getAllActiveTickets, updateTicket } from './db'
+import { addTicketToDB, getAllActiveTickets, getTicketById, login, updateTicket } from './db'
 
 const wss = new WebSocketServer({ port: 8080 })
 
@@ -27,7 +27,7 @@ let activeBalls: number[] = []
 const players: IPlayer[] = []
 let currentBallIndex = 0
 
-const ballDrawingTimeMS = 250
+const ballDrawingTimeMS = 2000
 const roundTimeMS = ballDrawingTimeMS * 35
 const pauseTimeMS = 10000
 
@@ -58,14 +58,27 @@ wss.on('connection', (ws) => {
   ws.on('message', (data) => {
     const message = convertMessageRecieve(data)
 
-    if (message.type === GameActions.PLAYER_JOINED) {
-      players.push({ ...message.data, ws })
-      gameState.activePlayers = wss.clients.size
-
-      broadcast({
-        type: GameActions.UPDATE_GAME_STATE,
-        data: gameState
+    if (message.type === GameActions.LOGIN) {
+      const { username, password } = message.data
+      login(username, password).then((user) => {
+        if (user) {
+          players.push({ ...user, ws } as IPlayer)
+          ws.send(
+            convertMessageSend({
+              type: GameActions.LOGIN_SUCCESS,
+              data: user
+            })
+          )
+        } else {
+          ws.send(
+            convertMessageSend({
+              type: GameActions.LOGIN_FAIL
+            })
+          )
+        }
       })
+
+      gameState.activePlayers = wss.clients.size
     }
 
     if (message.type === GameActions.BET) {
@@ -83,16 +96,14 @@ wss.on('connection', (ws) => {
 
       addTicketToDB(newTicket)
 
-      generateQR('localhost:3000/ticket-status?id=' + newTicket.id).then(
-        (qrCode) => {
-          ws.send(
-            convertMessageSend({
-              type: GameActions.BET_SUCCESS_RESPONSE,
-              data: qrCode
-            })
-          )
-        }
-      )
+      generateQR('localhost:3000/ticket-status?id=' + newTicket.id).then((qrCode) => {
+        ws.send(
+          convertMessageSend({
+            type: GameActions.BET_SUCCESS_RESPONSE,
+            data: qrCode
+          })
+        )
+      })
     }
   })
 
@@ -131,8 +142,7 @@ function executeRound() {
     }
 
     if (currentBallIndex === 0) {
-      gameState.firstBallHigherThan24 =
-        activeBalls[currentBallIndex] > 24 ? true : false
+      gameState.firstBallHigherThan24 = activeBalls[currentBallIndex] > 24 ? true : false
       gameState.firstBallEven = activeBalls[currentBallIndex] % 2 === 0
       gameState.firstBallColor = getColorOfBall(activeBalls[currentBallIndex])
     }
@@ -164,8 +174,7 @@ async function endRound() {
   let activeTickets = await getAllActiveTickets()
 
   for (const ticket of activeTickets) {
-    const isTicketExpired =
-      ticket.startingRound + ticket.numOfRounds === gameState.round + 1
+    const isTicketExpired = ticket.startingRound + ticket.numOfRounds === gameState.round + 1
 
     const isTicketNotYetInPlay = ticket.startingRound > gameState.round
 
