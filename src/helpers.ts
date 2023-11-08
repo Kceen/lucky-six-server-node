@@ -131,9 +131,11 @@ export const convertDBResponseUserToUserDTO = (userDB: any) => {
     id: userDB.id,
     username: userDB.username,
     money: userDB.money,
-    tickets: userDB.expand['tickets(user)'].map((ticketDB: any) =>
-      convertDBResponseTicketToTicketDTO(ticketDB)
-    )
+    tickets: userDB.expand['tickets(user)']
+      ? userDB.expand['tickets(user)'].map((ticketDB: any) =>
+          convertDBResponseTicketToTicketDTO(ticketDB)
+        )
+      : []
   }
 
   return user

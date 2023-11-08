@@ -18,7 +18,15 @@ import {
 } from './models'
 import crypto from 'crypto'
 import { startTicketCheckingServer } from './ticketCheckingServer'
-import { addTicketToDB, getAllActiveTickets, getTicketById, login, updateTicket } from './db'
+import {
+  addTicketToDB,
+  getAllActiveTickets,
+  getTicketById,
+  getUserById,
+  login,
+  updateTicket,
+  updateUser
+} from './db'
 
 const wss = new WebSocketServer({ port: 8080 })
 
@@ -27,7 +35,7 @@ let activeBalls: number[] = []
 const players: IPlayer[] = []
 let currentBallIndex = 0
 
-const ballDrawingTimeMS = 2000
+const ballDrawingTimeMS = 100
 const roundTimeMS = ballDrawingTimeMS * 35
 const pauseTimeMS = 10000
 
@@ -55,7 +63,12 @@ executeRound()
 setInterval(executeRound, roundTimeMS + pauseTimeMS)
 
 wss.on('connection', (ws) => {
-  ws.on('message', (data) => {
+  broadcast({
+    type: GameActions.UPDATE_GAME_STATE,
+    data: gameState
+  })
+
+  ws.on('message', async (data) => {
     const message = convertMessageRecieve(data)
 
     if (message.type === GameActions.LOGIN) {
@@ -82,8 +95,6 @@ wss.on('connection', (ws) => {
     }
 
     if (message.type === GameActions.BET) {
-      const test = message.data.betPerRound * message.data.numOfRounds
-
       const newTicket: ITicket = {
         ...message.data,
         timestamp: new Date(),
@@ -94,16 +105,42 @@ wss.on('connection', (ws) => {
         betSum: message.data.betPerRound * message.data.numOfRounds
       }
 
-      addTicketToDB(newTicket)
-
-      generateQR('localhost:3000/ticket-status?id=' + newTicket.id).then((qrCode) => {
+      const user = await getUserById(newTicket.userId)
+      if (!user) {
         ws.send(
           convertMessageSend({
-            type: GameActions.BET_SUCCESS_RESPONSE,
-            data: qrCode
+            type: GameActions.BET_FAIL_RESPONSE,
+            data: "User account doesn't exist"
           })
         )
-      })
+      } else if (user.money < newTicket.betSum) {
+        ws.send(
+          convertMessageSend({
+            type: GameActions.BET_FAIL_RESPONSE,
+            data: "You don't have enough funds on your account"
+          })
+        )
+      } else {
+        await addTicketToDB(newTicket)
+        const updatedUser = await updateUser(user.id, { money: user.money - newTicket.betSum })
+        const userWithTickets = await getUserById(updatedUser.id)
+
+        ws.send(
+          convertMessageSend({
+            type: GameActions.UPDATE_USER_STATE,
+            data: userWithTickets
+          })
+        )
+
+        generateQR('localhost:3000/ticket-status?id=' + newTicket.id).then((qrCode) => {
+          ws.send(
+            convertMessageSend({
+              type: GameActions.BET_SUCCESS_RESPONSE,
+              data: qrCode
+            })
+          )
+        })
+      }
     }
   })
 
@@ -207,6 +244,18 @@ async function endRound() {
         return sum + round.amountWon
       }, 0)
     })
+
+    const userWithTickets = await getUserById(ticket.user)
+    const userWS = players.find((player) => player.id === ticket.user)
+
+    if (userWS) {
+      userWS.ws.send(
+        convertMessageSend({
+          type: GameActions.UPDATE_USER_STATE,
+          data: userWithTickets
+        })
+      )
+    }
 
     if (isTicketExpired) {
       await updateTicket(ticket.id, {

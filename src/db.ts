@@ -3,7 +3,7 @@ import {
   convertDBResponseTicketToTicketDTO,
   convertDBResponseUserToUserDTO
 } from './helpers'
-import { ITicket, ITicketDTO } from './models'
+import { ITicket, ITicketDTO, IUserDTO } from './models'
 
 const PocketBase = require('pocketbase/cjs')
 
@@ -24,7 +24,7 @@ export const getAllActiveTickets = async () => {
 export const addTicketToDB = async (ticket: ITicket) => {
   await pb.collection('tickets').create({
     ticketId: ticket.id,
-    playerId: ticket.playerId,
+    user: [ticket.userId],
     betPerRound: ticket.betPerRound,
     rounds: ticket.rounds,
     userBalls: ticket.userBalls.join(','),
@@ -36,7 +36,7 @@ export const addTicketToDB = async (ticket: ITicket) => {
   })
 }
 
-export const updateTicket = async (recordId: string, updatedFieldsObject: any) => {
+export const updateTicket = async (recordId: string, updatedFieldsObject: Partial<ITicketDTO>) => {
   return await pb.collection('tickets').update(recordId, {
     ...updatedFieldsObject
   })
@@ -70,7 +70,30 @@ export const login = async (username: string, password: string) => {
 
     return user
   } catch (error) {
-    console.log(error)
+    console.error('---------- LOGIN ATTEMPT FAILED ----------')
     return undefined
   }
+}
+
+export const getUserById = async (userId: string) => {
+  try {
+    const userResponse = await pb
+      .collection('users')
+      .getOne(userId, { expand: 'tickets(user).user' })
+    const user = convertDBResponseUserToUserDTO(userResponse)
+
+    return user
+  } catch (error) {
+    console.error(`---------- USER NOT FOUND IN DB WITH ID = ${userId} ----------`)
+    return undefined
+  }
+}
+
+export const updateUser = async (userId: string, updatedFieldsObject: Partial<IUserDTO>) => {
+  const usersResponse = await pb.collection('users').update(userId, {
+    ...updatedFieldsObject
+  })
+  const user = convertDBResponseUserToUserDTO(usersResponse)
+
+  return user
 }

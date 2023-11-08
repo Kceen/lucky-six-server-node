@@ -2,7 +2,7 @@ import { WebSocket } from 'ws'
 
 export interface ITicket {
   id: string
-  playerId: string
+  userId: string
   betPerRound: number
   betSum: number
   rounds: ITicketRound[]
@@ -71,9 +71,11 @@ export interface IGameState {
 export enum GameActions {
   PLAYER_JOINED = 'PLAYER_JOINED',
   UPDATE_GAME_STATE = 'UPDATE_GAME_STATE',
+  UPDATE_USER_STATE = 'UPDATE_USER_STATE',
   PLAYER_WIN = 'PLAYER_WIN',
   BET = 'BET',
   BET_SUCCESS_RESPONSE = 'BET_SUCCESS_RESPONSE',
+  BET_FAIL_RESPONSE = 'BET_FAIL_RESPONSE',
   NEW_BALL = 'NEW_BALL',
   TIME_REMAINING = 'TIME_REMAINING',
   LOGIN = 'LOGIN',
