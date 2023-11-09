@@ -115,7 +115,7 @@ export const convertDBResponseTicketToTicketDTO = (ticketDB: any) => {
     startingRound: ticketDB.startingRound,
     numOfRounds: ticketDB.numOfRounds,
     timestamp: new Date(ticketDB.timestamp),
-    active: ticketDB.active,
+    status: ticketDB.status,
     amountWon: ticketDB.amountWon,
     user: {
       id: ticketDB.expand.user.id,

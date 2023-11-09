@@ -14,7 +14,8 @@ import {
   IMessage,
   IPlayer,
   ITicket,
-  ITicketRound
+  ITicketRound,
+  TicketStatus
 } from './models'
 import crypto from 'crypto'
 import { startTicketCheckingServer } from './ticketCheckingServer'
@@ -101,7 +102,7 @@ wss.on('connection', (ws) => {
         id: crypto.randomUUID(),
         startingRound: gameState.round + 1,
         rounds: [],
-        active: true,
+        status: TicketStatus.PENDING,
         betSum: message.data.betPerRound * message.data.numOfRounds
       }
 
@@ -249,6 +250,7 @@ async function endRound() {
     const userWS = players.find((player) => player.id === ticket.user)
 
     if (userWS) {
+      console.log('yes')
       userWS.ws.send(
         convertMessageSend({
           type: GameActions.UPDATE_USER_STATE,
@@ -259,7 +261,7 @@ async function endRound() {
 
     if (isTicketExpired) {
       await updateTicket(ticket.id, {
-        active: false
+        status: ticket.amountWon > 0 ? TicketStatus.WIN : TicketStatus.LOSE
       })
       continue
     }

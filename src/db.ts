@@ -3,7 +3,7 @@ import {
   convertDBResponseTicketToTicketDTO,
   convertDBResponseUserToUserDTO
 } from './helpers'
-import { ITicket, ITicketDTO, IUserDTO } from './models'
+import { ITicket, ITicketDTO, IUserDTO, TicketStatus } from './models'
 
 const PocketBase = require('pocketbase/cjs')
 
@@ -11,7 +11,7 @@ const pb = new PocketBase('http://127.0.0.1:8090')
 
 export const getAllActiveTickets = async () => {
   const activeTickets = await pb.collection('tickets').getFullList({
-    filter: 'active = true'
+    filter: "status = 'PENDING'"
   })
 
   for (const ticket of activeTickets) {
@@ -31,7 +31,7 @@ export const addTicketToDB = async (ticket: ITicket) => {
     startingRound: ticket.startingRound,
     numOfRounds: ticket.numOfRounds,
     timestamp: new Date(),
-    active: ticket.active,
+    status: TicketStatus.PENDING,
     betSum: ticket.betSum
   })
 }
