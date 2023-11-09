@@ -22,7 +22,6 @@ import { startTicketCheckingServer } from './ticketCheckingServer'
 import {
   addTicketToDB,
   getAllActiveTickets,
-  getTicketById,
   getUserById,
   login,
   updateTicket,
@@ -33,7 +32,7 @@ const wss = new WebSocketServer({ port: 8080 })
 
 const allBalls: number[] = []
 let activeBalls: number[] = []
-const players: IPlayer[] = []
+let players: IPlayer[] = []
 let currentBallIndex = 0
 
 const ballDrawingTimeMS = 100
@@ -77,6 +76,7 @@ wss.on('connection', (ws) => {
       login(username, password).then((user) => {
         if (user) {
           players.push({ ...user, ws } as IPlayer)
+
           ws.send(
             convertMessageSend({
               type: GameActions.LOGIN_SUCCESS,
@@ -147,7 +147,7 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     gameState.activePlayers--
-    players.filter((player) => {
+    players = players.filter((player) => {
       player.ws !== ws
     })
   })
@@ -250,7 +250,6 @@ async function endRound() {
     const userWS = players.find((player) => player.id === ticket.user)
 
     if (userWS) {
-      console.log('yes')
       userWS.ws.send(
         convertMessageSend({
           type: GameActions.UPDATE_USER_STATE,
