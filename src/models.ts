@@ -66,6 +66,9 @@ export interface IGameState {
   firstBallHigherThan24: boolean
   firstBallColor: string
   firstBallEven: boolean
+  firstFiveBallsSum: number
+  evenBallsCount: number
+  oddBallsCount: number
 }
 
 export enum GameActions {

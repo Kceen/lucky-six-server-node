@@ -35,7 +35,7 @@ let activeBalls: number[] = []
 let players: IPlayer[] = []
 let currentBallIndex = 0
 
-const ballDrawingTimeMS = 100
+const ballDrawingTimeMS = 3000
 const roundTimeMS = ballDrawingTimeMS * 35
 const pauseTimeMS = 10000
 
@@ -49,7 +49,10 @@ export const gameState: IGameState = {
   pauseTime: pauseTimeMS / 1000,
   firstBallColor: '',
   firstBallEven: false,
-  firstBallHigherThan24: false
+  firstBallHigherThan24: false,
+  firstFiveBallsSum: 0,
+  evenBallsCount: 0,
+  oddBallsCount: 0
 }
 
 // INITIALIZE ALL BALLS WITH NUMBER VALUES AND START TICKET CHECKING SERVER
@@ -159,6 +162,9 @@ function executeRound() {
 
   gameState.status = GameStatus.ROUND_IN_PROGRESS
   gameState.activeBalls = []
+  gameState.firstFiveBallsSum = 0
+  gameState.evenBallsCount = 0
+  gameState.oddBallsCount = 0
 
   broadcast({
     type: GameActions.UPDATE_GAME_STATE,
@@ -183,6 +189,16 @@ function executeRound() {
       gameState.firstBallHigherThan24 = activeBalls[currentBallIndex] > 24 ? true : false
       gameState.firstBallEven = activeBalls[currentBallIndex] % 2 === 0
       gameState.firstBallColor = getColorOfBall(activeBalls[currentBallIndex])
+    }
+
+    if (currentBallIndex < 5) {
+      gameState.firstFiveBallsSum += activeBalls[currentBallIndex]
+    }
+
+    if (activeBalls[currentBallIndex] % 2 === 0) {
+      gameState.evenBallsCount++
+    } else {
+      gameState.oddBallsCount++
     }
 
     gameState.activeBalls.push(activeBalls[currentBallIndex])
